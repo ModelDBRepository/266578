@@ -1,0 +1,13 @@
+//Developer Fabio Simoes de Souza, University Federal of ABC and University of Colorado Anschutz Medical Campus, 2020
+
+
+//Choose the random seed
+RANDOM_SEED = 20 //for instance, 0, 1, 2, ...
+
+//comment and leave only one line
+load_file("mosinit_PC_SC_SplusSaline.hoc")
+//load_file("mosinit_PC_SC_SminusSaline.hoc")
+//load_file("mosinit_PC_SC_SplusCNO.hoc")
+//load_file("mosinit_PC_SC_SminusCNO.hoc")
+
+

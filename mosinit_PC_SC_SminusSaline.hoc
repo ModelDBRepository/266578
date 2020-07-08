@@ -1,0 +1,529 @@
+//Developer Fabio Simoes de Souza, 2020 
+//University of Colorado Anschutz Medical Campus
+//University Federal of ABC
+
+load_file("nrngui.hoc")
+load_file("2_compartment_template.hoc")  //PC
+load_file("PF_template.hoc")  //PF
+load_file("SC_template.hoc")  //SC
+
+totalruntime = startsw() - totalruntime
+print "total run time ", totalruntime
+
+//Setting the random seed 
+objref semente
+semente = new Random(RANDOM_SEED)
+semente.uniform(0,1000000000)
+semente_pick=(semente.repick())
+semente_randomica = semente_pick
+
+print semente_randomica
+
+
+//PARAMETERS
+
+// Fiber frequencies
+PFfreq=50 //Hz
+CFfreq=300  // Hz Mathy et al., Neuron 62: 388-399, 2009
+BGfreq=10   //Hz background for two SCs
+SCfreq= 20 // Stellate cell freq Hausser and Clark 1997
+
+//number of fibers
+NSC=40 //number of BG stellate cells to inhibity PCs
+NBGPF=5 //number of background PF inputs to drive real SCs
+NCF=1 //number of CF inputs
+NPF= 10 //number of PF inputs
+
+//Synaptic conductances
+//PC AMPAR
+Gmax_PF_PC_AMPAR = 0.2857e-3  //uS (Hausser and Roth, 1997)
+
+//PC GABAaR
+Gmax_SC_PC_GABAaR_dist = 0.1*15e-3  //uS (Houston et al., 2009)
+Gmax_SC_PC_GABAaR_prox = 0.1*15e-3  //uS (Houston et al., 2009)
+Gmax_SC_PC_GABAaR_BG = 15e-3  //uS (Houston et al., 2009)
+
+//SC AMPAR
+Gmax_PF_SC0_AMPAR = 0.1*1.3774e-3  //uS (Chu et al., 2012)
+Gmax_PF_SC1_AMPAR = 0.1*1.3774e-3  //uS (Chu et al., 2012)
+
+//SC GABAaR
+Gmax_SC_SC_GABAaR = 1.0786e-3  //uS (Kondo and Marty, 1998)
+
+// CF and PF timing
+PF_onset = 2000 
+CF_onset = 6000  // S-, onset after the end of simulation
+
+duration= 10e-3 // s
+
+tsim = 5000
+tstop=5000 
+
+//////////
+//PC
+/////////
+
+objref PC[1]
+PC[0]=new Purkinje_simple(0,0,0)
+PC[0].position(-100,100,0)
+
+
+//AMPAR
+PC[0].Esynapse.tau1=0.28 //ms rise time (Hausser and Roth, 1997)
+PC[0].Esynapse.tau2=1.23  //ms decay time (Hausser and Roth, 1997)
+PC[0].Esynapse.e=0       //mV reversal potential
+
+
+//GABAaR 
+PC[0].Isynapse_dist.tau1= 1.8 //ms rise time 
+PC[0].Isynapse_dist.tau2= 8.5  //ms decay time
+PC[0].Isynapse_dist.e=-85       //mV reversal potential (Houston et al., 2009) //J neurosci. 29: 10416, 2009
+
+PC[0].Isynapse_prox.tau1= 1.8 //ms rise time
+PC[0].Isynapse_prox.tau2= 8.5  //ms decay time
+PC[0].Isynapse_prox.e=-85       //mV reversal potential (Houston et al., 2009) //J neurosci. 29: 10416, 2009
+
+PC[0].Isynapse_BG.tau1= 1.8 //ms rise time
+PC[0].Isynapse_BG.tau2= 8.5  //ms decay time
+PC[0].Isynapse_BG.e=-85       //mV reversal potential (Houston et al., 2009) //J neurosci. 29: 10416, 2009
+
+
+//////////
+//SC
+/////////
+
+//creating cells
+objref SC[2]
+SC[0]=new StellateCell(0,0,0)
+SC[1]=new StellateCell(0,0,0)
+
+SC[0].position(150,0,0)
+SC[1].position(400,0,0)
+
+
+
+//creating synaptic receptors
+//AMPAR
+SC[0].Esynapse.tau1=3.45 //ms rise time (Chu et al., 2012)
+SC[0].Esynapse.tau2=3.17  //ms decay time (Chu et al., 2012)
+SC[0].Esynapse.e=0       //mV reversal potential
+
+SC[1].Esynapse.tau1=3.45 //ms rise time (Chu et al., 2012)
+SC[1].Esynapse.tau2=3.17  //ms decay time (Chu et al., 2012)
+SC[1].Esynapse.e=0       //mV reversal potential
+
+
+//GABAaR 
+SC[0].Isynapse.tau1= 0.6 //ms rise time (Kondo and Marty, 1998) 
+SC[0].Isynapse.tau2= 5.9  //ms decay time (Kondo and Marty, 1998) 
+//SC[0].Isynapse.e=-85       //mV reversal potential (Kondo and Marty, 1998) 
+SC[0].Isynapse.e=-60       //mV reversal potential (Chavas and Marty, 2003) 
+
+SC[1].Isynapse.tau1= 0.6 //ms rise time (Kondo and Marty, 1998) 
+SC[1].Isynapse.tau2= 5.9  //ms decay time (Kondo and Marty, 1998) 
+//SC[1].Isynapse.e=-85       //mV reversal potential (Kondo and Marty, 1998) 
+SC[1].Isynapse.e=-60       //mV reversal potential (Chavas and Marty, 2003) 
+
+//Chavas, J. & Marty, A. (2003). Coexistence of excitatory and //inhibitory GABA synapses in the cerebellar interneuron network. //J. Neurosci. 23, 2019-2031.    
+
+
+// Creating the Input Fibers 
+
+XORIGIN0 = 0
+YORIGIN0 = 0
+ZORIGIN0 = 0
+
+XORIGIN1 = 0
+YORIGIN1 = -200
+ZORIGIN1 = 0
+
+//Creating PF inputs
+objref fiber[NPF]	//define objects for cells
+for i=0,NPF-1 {
+
+//pego uma seed nova para cada fibra
+semente_pick=(semente.repick())
+semente_randomica = semente_pick
+
+fiber[i]=new fibre(-10,0,0,semente_randomica) 
+
+
+
+//Move cell location
+fiber[i].position(XORIGIN0+10*i,YORIGIN0,ZORIGIN0)
+
+fiber[i].Presynapse fiber[i].nclist.append(new NetCon(fiber[i].StimTrigger,fiber[i].syn,0.5,0,0.01)) 
+}
+
+
+
+//setting up PF stimulus
+NETIN_SP_START= PF_onset //5000 // start time
+NETIN_SP_NUMBER= PFfreq*2000*1e-3 - 5 //PFfreq*duration //total number of spikes
+SEED=1
+NETIN_SP_INTERVAL=1000/PFfreq 
+NETIN_SP_NOISE=1  // 1=randomized spikes
+
+for i = 0, NPF-1 {
+   fiber[i].StimTrigger.start=NETIN_SP_START
+   fiber[i].StimTrigger.interval=NETIN_SP_INTERVAL
+   fiber[i].StimTrigger.number=NETIN_SP_NUMBER
+   fiber[i].StimTrigger.noise=NETIN_SP_NOISE
+   //fiber[i].StimTrigger.seed(i)
+}
+
+XORIGIN0 = 0
+YORIGIN0 = 0
+ZORIGIN0 = 0
+
+XORIGIN1 = 0
+YORIGIN1 = -300
+ZORIGIN1 = 0
+
+//Creating CF inputs
+objref fiber2[NCF]	//define objects for cells
+for i=0,NCF-1 {
+
+//pick a new seed for each fiber
+semente_pick=int(semente.repick())
+semente_randomica = semente_pick
+fiber2[i]=new fibre(-10,0,0,semente_randomica) 
+
+//Move cell location
+fiber2[i].position(XORIGIN0+10*i,YORIGIN0,ZORIGIN0)
+
+
+fiber2[i].Presynapse fiber2[i].nclist.append(new NetCon(fiber2[i].StimTrigger,fiber2[i].syn,0.5,0,0.01)) 
+}
+
+//setting up CF stimulus
+NETIN_SP_START= CF_onset  // start time
+NETIN_SP_NUMBER= 2 //CFfreq*duration //total number of spikes (Mathy et al., Neuron 62: 388-399, 2009)
+SEED=1
+NETIN_SP_INTERVAL=1000/CFfreq 
+NETIN_SP_NOISE=0  // 1=randomized spikes
+
+for i = 0, NCF-1 {
+   fiber2[i].StimTrigger.start=NETIN_SP_START
+   fiber2[i].StimTrigger.interval=NETIN_SP_INTERVAL
+   fiber2[i].StimTrigger.number=NETIN_SP_NUMBER
+   fiber2[i].StimTrigger.noise=NETIN_SP_NOISE
+   //fiber2[i].StimTrigger.seed(i)
+}
+
+XORIGIN0 = 0
+YORIGIN0 = 0
+ZORIGIN0 = 0
+
+XORIGIN1 = 0
+YORIGIN1 = -400
+ZORIGIN1 = 0
+
+
+//Background GABAR inhibitory inputs to PC
+objref fiber3[NSC]	//define objects for cells
+for i=0,NSC-1 {
+
+//pick a new seed for each fiber
+semente_pick=int(semente.repick())
+semente_randomica = semente_pick
+fiber3[i]=new fibre(-10,0,0,semente_randomica) 
+
+//Move cell location
+fiber3[i].position(XORIGIN0+10*i,YORIGIN0,ZORIGIN0)
+
+fiber3[i].Presynapse fiber3[i].nclist.append(new NetCon(fiber3[i].StimTrigger,fiber3[i].syn,0.5,0,0.01)) 
+}
+
+//setting up SC stimulus
+NETIN_SP_START=0 // start time
+NETIN_SP_NUMBER= SCfreq*tsim*1e-3 //total number of spikes
+SEED=1
+NETIN_SP_INTERVAL=1000/SCfreq 
+NETIN_SP_NOISE=1  // 1=randomized spikes
+
+for i = 0, NSC-1 {
+   fiber3[i].StimTrigger.start=NETIN_SP_START
+   fiber3[i].StimTrigger.interval=NETIN_SP_INTERVAL
+   fiber3[i].StimTrigger.number=NETIN_SP_NUMBER
+   fiber3[i].StimTrigger.noise=NETIN_SP_NOISE
+   //fiber3[i].StimTrigger.seed(i)
+}
+
+
+XORIGIN0 = 0
+YORIGIN0 = 0
+ZORIGIN0 = 0
+
+XORIGIN1 = 0
+YORIGIN1 = -500
+ZORIGIN1 = 0
+
+//Background PF inputs to PC
+objref fiber4[NBGPF]	//define objects for cells
+for i=0,NBGPF-1 {
+
+//pick a new seed for each fiber
+semente_pick=int(semente.repick())
+semente_randomica = semente_pick
+fiber4[i]=new fibre(-10,0,0,semente_randomica) 
+
+//Move cell location
+fiber4[i].position(XORIGIN0+10*i,YORIGIN0,ZORIGIN0)
+
+
+fiber4[i].Presynapse fiber3[i].nclist.append(new NetCon(fiber4[i].StimTrigger,fiber4[i].syn,0.5,0,0.01)) 
+}
+
+//setting up PF background stimulus
+NETIN_SP_START=0 // start time
+NETIN_SP_NUMBER=SCfreq*tsim*1e-3 //total number of spikes
+SEED=1
+NETIN_SP_INTERVAL=1000/SCfreq 
+NETIN_SP_NOISE=1  // 1=randomized spikes
+
+for i = 0, NBGPF-1 {
+   fiber4[i].StimTrigger.start=NETIN_SP_START
+   fiber4[i].StimTrigger.interval=NETIN_SP_INTERVAL
+   fiber4[i].StimTrigger.number=NETIN_SP_NUMBER
+   fiber4[i].StimTrigger.noise=NETIN_SP_NOISE
+   //fiber4[i].StimTrigger.seed(i)
+}
+
+
+//Creating Synaptic Connections
+
+//PF -> PC
+
+//PF parameters
+CONNECTION_THRESHOLD_PFPC = -10
+CONNECTION_DELAY_PFPC = 0.0 
+CONNECTION_WEIGHT_PFPC = Gmax_PF_PC_AMPAR 
+min=0 // 0 ms delay
+max=10 // 10 ms delay
+
+objref prob
+prob=new Random()
+
+//Connecting PF -> PC
+for i=0,NPF-1 {
+
+dprob=prob.uniform(min,max) //normal distribution delays
+
+fiber[i].Presynapse PC[0].nclist.append(new NetCon(&fiber[i].Presynapse.v(0.5),PC[0].Esynapse, CONNECTION_THRESHOLD_PFPC,CONNECTION_DELAY_PFPC+dprob,CONNECTION_WEIGHT_PFPC))
+}
+
+
+//CF -> PC
+
+//Increase those factor to create a CF-like effect
+CF_weightfactor = 100
+
+//CF parameters
+CONNECTION_THRESHOLD_CFPC = -10
+CONNECTION_DELAY_CFPC = 0.0
+CONNECTION_WEIGHT_CFPC = Gmax_PF_PC_AMPAR * CF_weightfactor 
+min=0 // 0 ms delay
+max=10 // 10 ms delay
+
+objref prob
+prob=new Random()
+
+//Connecting CF -> PC
+for i=0,NCF-1 {
+
+dprob=prob.uniform(min,max) //normal distribution delays
+
+fiber2[i].Presynapse PC[0].nclist.append(new NetCon(&fiber2[i].Presynapse.v(0.5),PC[0].Esynapse, CONNECTION_THRESHOLD_CFPC,CONNECTION_DELAY_CFPC+dprob,CONNECTION_WEIGHT_CFPC))
+}
+
+
+//Spontaneous PF -> SC
+
+//PF parameters
+CONNECTION_THRESHOLD_PFSC = -10
+CONNECTION_DELAY_PFSC = 0.0
+CONNECTION_WEIGHT_PFSC0 = Gmax_PF_SC0_AMPAR
+CONNECTION_WEIGHT_PFSC1 = Gmax_PF_SC1_AMPAR
+min=0 // 0 ms delay
+max=10 // 10 ms delay
+
+objref prob
+prob=new Random()
+
+//Connecting PF -> SC 0
+i=0
+dprob=prob.uniform(min,max) //normal distribution delays
+
+fiber4[i].Presynapse SC[0].nclist.append(new NetCon(&fiber4[i].Presynapse.v(0.5),SC[0].Esynapse, CONNECTION_THRESHOLD_PFSC,CONNECTION_DELAY_PFSC+dprob,CONNECTION_WEIGHT_PFSC0))
+
+//Connecting PF -> SC 1
+i=1
+dprob=prob.uniform(min,max) //normal distribution delays
+
+fiber4[i].Presynapse SC[1].nclist.append(new NetCon(&fiber4[i].Presynapse.v(0.5),SC[1].Esynapse, CONNECTION_THRESHOLD_PFSC,CONNECTION_DELAY_PFSC+dprob,CONNECTION_WEIGHT_PFSC1))
+
+
+
+//PF -> SC
+
+//PF parameters
+CONNECTION_THRESHOLD_PFSC = -10
+CONNECTION_DELAY_PFSC = 0.0
+CONNECTION_WEIGHT_PFSC0 = Gmax_PF_SC0_AMPAR
+CONNECTION_WEIGHT_PFSC1 = Gmax_PF_SC1_AMPAR
+min=0 // 0 ms delay
+max=10 // 10 ms delay
+
+objref prob
+prob=new Random()
+
+//Connecting PF -> SC 0
+for i=0,NPF-1 {
+
+dprob=prob.uniform(min,max) //normal distribution delays
+
+fiber[i].Presynapse SC[0].nclist.append(new NetCon(&fiber[i].Presynapse.v(0.5),SC[0].Esynapse, CONNECTION_THRESHOLD_PFSC,CONNECTION_DELAY_PFSC+dprob,CONNECTION_WEIGHT_PFSC0))
+}
+
+//Connecting PF -> SC 1
+for i=0,NPF-1 {
+
+dprob=prob.uniform(min,max) //normal distribution delays
+
+fiber[i].Presynapse SC[1].nclist.append(new NetCon(&fiber[i].Presynapse.v(0.5),SC[1].Esynapse, CONNECTION_THRESHOLD_PFSC,CONNECTION_DELAY_PFSC+dprob,CONNECTION_WEIGHT_PFSC1))
+}
+
+
+
+//CF -> SC
+
+//Increase those factor to create a CF-like effect
+CF_weightfactor = 100
+
+//CF parameters
+CONNECTION_THRESHOLD_CFSC = -10
+CONNECTION_DELAY_CFSC = 10 //assumed a 10ms for glu spillover
+//Based on the olfactory glomerulus
+//Christie and Westbrook, J Neurosci. 26: 2269-2277, 2006
+
+
+CONNECTION_WEIGHT_CFSC0 = Gmax_PF_SC0_AMPAR * CF_weightfactor 
+CONNECTION_WEIGHT_CFSC1 = Gmax_PF_SC1_AMPAR * CF_weightfactor 
+
+min=0 // 0 ms delay
+max=10 // 10 ms delay
+
+objref prob
+prob=new Random()
+
+
+//Connecting CF -> SC 0
+for i=0,NCF-1 {
+
+dprob=prob.uniform(min,max) //normal distribution delays
+
+fiber2[i].Presynapse SC[0].nclist.append(new NetCon(&fiber2[i].Presynapse.v(0.5),SC[0].Esynapse, CONNECTION_THRESHOLD_CFSC,CONNECTION_DELAY_CFSC+dprob,CONNECTION_WEIGHT_CFSC0))
+}
+
+//Connecting CF -> SC 1
+for i=0,NCF-1 {
+
+dprob=prob.uniform(min,max) //normal distribution delays
+
+fiber2[i].Presynapse SC[1].nclist.append(new NetCon(&fiber2[i].Presynapse.v(0.5),SC[1].Esynapse, CONNECTION_THRESHOLD_CFSC,CONNECTION_DELAY_CFSC+dprob,CONNECTION_WEIGHT_CFSC1))
+}
+
+
+
+//SC -> PC
+
+//SC-PC parameters
+CONNECTION_THRESHOLD_SCPC = -10
+CONNECTION_DELAY_SCPC = 5 // Assuming a 5ms delay for spike to reach PC 
+CONNECTION_WEIGHT_SCPC_dist = Gmax_SC_PC_GABAaR_dist 
+CONNECTION_WEIGHT_SCPC_prox = Gmax_SC_PC_GABAaR_prox 
+
+//Connecting SC[0] -> PC
+SC[0].soma PC[0].nclist.append(new NetCon(&SC[0].soma.v(0.5),PC[0].Isynapse_dist, CONNECTION_THRESHOLD_SCPC,CONNECTION_DELAY_SCPC,CONNECTION_WEIGHT_SCPC_dist))
+
+//Connecting SC[1] -> PC
+SC[1].soma PC[0].nclist.append(new NetCon(&SC[1].soma.v(0.5),PC[0].Isynapse_prox, CONNECTION_THRESHOLD_SCPC,CONNECTION_DELAY_SCPC,CONNECTION_WEIGHT_SCPC_prox))
+
+
+//SC -> SC 
+
+//SC-SC parameters
+CONNECTION_THRESHOLD_SCSC = -10
+CONNECTION_DELAY_SCSC = 2.0 // 2ms delay (Kondo and Marty, 1998) 
+CONNECTION_WEIGHT_SCSC = Gmax_SC_SC_GABAaR 
+
+//Connecting SC[0] -> SC[1] 
+SC[0].soma SC[1].nclist.append(new NetCon(&SC[0].soma.v(0.5),SC[1].Isynapse, CONNECTION_THRESHOLD_SCSC,CONNECTION_DELAY_SCSC,CONNECTION_WEIGHT_SCSC))
+
+
+// Background (BG) inhibitory inputs -> PC
+
+CONNECTION_THRESHOLD_BGPC = -10
+CONNECTION_DELAY_BGPC = 0.0
+CONNECTION_WEIGHT_BGPC = Gmax_SC_PC_GABAaR_BG 
+min=0 // 0 ms delay
+max=10 // 10 ms delay
+
+objref prob
+prob=new Random()
+
+//Connecting BG -> PC
+for i=0,NSC-1 {
+
+dprob=prob.uniform(min,max) //normal distribution delays
+
+fiber3[i].Presynapse PC[0].nclist.append(new NetCon(&fiber3[i].Presynapse.v(0.5),PC[0].Isynapse_BG, CONNECTION_THRESHOLD_BGPC,CONNECTION_DELAY_BGPC+dprob,CONNECTION_WEIGHT_BGPC))
+}
+
+// Plotting the figures
+
+
+objref grafico[6]
+grafico[0]=new Graph()
+grafico[0].size(0,tstop, -100, 50)
+grafico[0].beginline()
+grafico[0].addvar("Soma PC", &PC[0].soma.v(0.5),2,1)
+grafico[0].flush()
+
+grafico[1]=new Graph()
+grafico[1].size(0,tstop, -100, 50)
+grafico[1].beginline()
+grafico[1].addvar("Soma SC[0]", &SC[0].soma.v(0.5),3,1)
+grafico[1].flush()
+
+
+grafico[2]=new Graph()
+grafico[2].size(0,tstop, -100, 50)
+grafico[2].beginline()
+grafico[2].addvar("Soma SC[1]", &SC[1].soma.v(0.5),4,1)
+grafico[2].flush()
+
+
+graphList[0].append(grafico[0])
+graphList[0].append(grafico[1])
+graphList[0].append(grafico[2])
+
+
+objref ps
+ps = new PlotShape(1)
+ps.variable("v")                                               
+ps.exec_menu("Show Diam")
+ps.exec_menu("Shape Plot")
+fast_flush_list.append(ps)
+
+
+
+//begining
+init()
+run()
+
+
+
+
+

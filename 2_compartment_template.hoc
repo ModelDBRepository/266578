@@ -1,0 +1,255 @@
+//load_file("nrngui.hoc")
+
+begintemplate Purkinje_simple
+
+public soma, Couple, nclist
+public x, y, z
+public Esynapse, Isynapse_dist, Isynapse_prox, Isynapse_BG
+
+//counting spikes
+public spiketimes,spikecount
+objref spiketimes,spikecount
+
+public voltagem
+objref voltagem
+
+public position
+
+alcohol = 0        // IF THIS IS SET TO 1 THEN WE IMPLEMENT THE ALCOHOL PUMP DECLINE 
+// Note that for alcohol experiments you need to set km of pump.mod to be 12 instead of 40
+multiple = 1           // this is a single parameter that can affect the rate of decline. But is more complicated than this though, so take a look at code below. 
+
+
+create soma
+create Couple
+
+objectvar nclist
+objectvar Esynapse, Isynapse_dist, Isynapse_prox, Isynapse_BG
+
+proc init() {
+x=$1
+y=$2
+z=$3
+
+
+create soma
+nclist=new List()
+
+spiketimes=new Vector()
+lastspikecount=0
+
+voltagem=new Vector()
+
+
+soma	      {
+pt3dclear()
+pt3dadd(x,y,z,50)
+pt3dadd(x+50,y,z,50) 	
+nseg=1 L=22 diam=22 
+}
+
+length = 529.29
+
+diamax = 4311.37/(3.14*length)
+diamax_2 = sqrt(diamax)
+diamax_3 = diamax_2 * 2
+
+Couple {
+nseg=1 L= length diam= diamax_3 
+Esynapse = new Exp2Syn(0.5)      //AMPAR
+Esynapse.tau1=0.28 //ms rise time (Hausser and Roth, 1997)
+Esynapse.tau2=1.23  //ms decay time (Hausser and Roth, 1997)
+Esynapse.e=0       //mV reversal potential
+
+Isynapse_prox = new Exp2Syn(0.5)      //GABAaR 
+Isynapse_prox.tau1=1.8 //ms rise time 
+Isynapse_prox.tau2=8.5  //ms decay time
+Isynapse_prox.e=-85       //mV reversal potential (Houston, 2009)
+
+Isynapse_dist = new Exp2Syn(1.0)      //GABAaR 
+Isynapse_dist.tau1=1.8 //ms rise time
+Isynapse_dist.tau2=8.5  //ms decay time
+Isynapse_dist.e=-85       //mV reversal potential (Houston, 2009)
+
+Isynapse_BG = new Exp2Syn(0.75)      //GABAaR 
+Isynapse_BG.tau1=1.8 //ms rise time (references ?) 
+Isynapse_BG.tau2=8.5  //ms decay time (references ?)
+Isynapse_BG.e=-85       //mV reversal potential (Houston, 2009)
+
+
+}  
+
+access soma
+ soma connect Couple(0),1
+
+// length = 529.29, DIAMETER = 3.22
+// DO NOT GET CONFUSEd WITH RADIUS AND DIAMETER
+
+a=0 
+forall for (x) a += area(x) 
+
+corrD = 42310/a 
+
+
+// global_ra = 250
+// set_ra()
+
+
+access soma
+soma {
+
+cm = 0.8
+
+insert narsg      // Na current. Resurgent. Markov model
+insert hpkj       // Ih              hyperpolarisation activated cation current
+insert bkpkj      // BK ca2+ dependent K+ current
+insert cadiff     // calcium diffusion
+insert kpkj
+insert kpkj2
+insert kpkjslow
+insert captain        // P type ca. P type calcium current
+
+gbar_narsg = 0.156     
+ghbar_hpkj = 0.00104           
+gkbar_bkpkj = 0.0728
+gkbar_kpkj = 0.0416        
+gkbar_kpkj2 = 0.0208       
+gkbar_kpkjslow = 0.0416     
+pcabar_captain = 0.00052   //  0.00005 
+
+insert lkpkj      // leak current
+e_lkpkj = -70
+g_lkpkj = 0.0001
+
+ena = 60
+ek = -88
+
+// -------------------
+insert pump 
+km_pump = 40                 // Michaelis-Menten
+n_pump = 1
+decline_pump = alcohol        // If this is set to 1 then we switch on the oubain/alcohol pump decline system
+initialdensity_pump = 1   // this is the density before the decline or the fixed density if no decline is chosen
+red_pump = 0           // this is the lag before the decline takes place
+lex_pump = 70 * multiple                    // this sets the speed of the decline
+// -------------------
+
+insert nadifl D_nadifl = 0.60 
+tau_nadifl = 5000  
+
+insert myexchangersoma
+
+//----------------------
+insert mypumpsoma
+decline_mypumpsoma = alcohol                       // If this is set to 1 then we switch on the oubain/alcohol pump decline system
+initialdensity_mypumpsoma = 0.5             // this is the density before the decline or the fixed density if no decline is chosen
+red_mypumpsoma = 50000           // this is the lag before the decline takes place
+lex_mypumpsoma = 200 * multiple                   // this sets the speed of the decline
+green_mypumpsoma = 50000           // this is the lag before the second rate of decline takes place
+lux_mypumpsoma = 200 * multiple                    // this sets the speed of the second set of decline
+//----------------------
+
+insert gkca
+gkbar_gkca = 0.01
+
+}
+
+
+
+
+Couple   {
+
+cm=0.8 * corrD 
+
+insert cha   gkhbar_cha = 0.00028914405 * corrD       // Ih              hyperpolarisation activated cation current. CHANGED NAME
+ 
+insert leak 
+gl_leak = (7.93319415*10^-5) * corrD
+el_leak = -80
+ 
+nab = 0.036    //  KD
+ruti = 0.032   // KA
+tt =  0.001    // Whalter Kv1.1 (or maybe kv1.2)
+
+        insert cap2 cai = 4e-5 cao = 2.4 gcabar_cap2 = 0.0016 * corrD
+         insert cat cai = 4e-5 cao = 2.4  gcabar_cat = 0.0006 * corrD
+         insert cae cai = 4e-5 cao = 2.4  gcabar_cae = 0.0032 * corrD
+         insert khh gkbar_khh = 0.00024 * corrD
+         insert km  gkbar_km  = 0.000004 * corrD
+         insert ka  gkbar_ka  = ruti * corrD
+         insert kd  gkbar_kd  = nab * corrD
+         insert kc3 gkbar_kc3  = 0.06 * corrD
+         insert k23 gkbar_k23  = 0.000156 * corrD
+         insert cad taur_cad = 2 cainf_cad = 4e-5
+		    kt_cad = 4e-5 kd_cad = 4e-5 
+depth_cad = 0.1  * corrD
+
+insert kv1
+gbar_kv1 = tt * corrD
+
+insert kdyn
+KAF_kdyn = 0.0119 // bursts at 5,149 
+// 0.01 - no bursts // 0.012 - bursts at 5000  // 0.013 bursts at around 3,500 // 0.015 bursts at around 2,500 // 0.02 - bursts at around 1000  
+// OLD: 0.1428571428571  //  0.008  // 0.011    //  (~50:50)
+// OLD: IN FULL MODEL IS 0.143, IN 40 COMPARTMENT IS 0.033, IN 5 COMPARTMENT IS 0.02. IN 2 COMPARTMENT IS 0.008 (BUT if Ra = 250+length = 240, it is 0.0055)
+dep_kdyn = 70e-3    // Have not applied corrD to the depth
+peak_kdyn = 3.03     // peak value of extracellular K concentration (because of buffering system)
+
+insert myexchanger
+ImaxNax_myexchanger = 0.00208768267 * corrD
+
+
+//----------------------
+
+insert mypump
+decline_mypump = alcohol                                 // If this is set to 1 then we switch on the oubain/alcohol pump decline system
+initialdensity_mypump = 0.00208768267 * corrD              // this is the density before the decline or the fixed density if no decline is chosen
+red_mypump = 50000                                         // this is the lag before the decline takes place
+lex_mypump = 200 * multiple                                            // this sets the speed of the decline
+
+//----------------------
+insert newnew
+km_newnew = 2.245        
+n_newnew = 1
+decline_newnew = alcohol                                   // If this is set to 1 then we switch on the oubain/alcohol pump decline system
+initialdensity_newnew = 0.0010438413 * corrD         // this is the density before the decline or the fixed density if no decline is chosen
+red_newnew = 50000           // this is the lag before the decline takes place
+lex_newnew = 200 * multiple                   // this sets the speed of the decline
+//----------------------
+
+// YOUR OWN ERG CURRENT (sequential, Hodgkin-Huxley)
+insert erg
+gbar_erg = 0 * corrD     //  0.01, 0.03 too small    0.1 does it, 0.05 does it.     (with vhalf = -5)
+vhalf_erg = -5   // - 35 is the default, but you could legitimately change this to -5 because it is -5 with physiological levels of external calcium 
+// (external calcium allosterically effects the channel)
+
+//counting spikes
+spikecount=new APCount(0.5)
+spikecount.thresh=-20
+spikecount.record(spiketimes)
+
+//Saving Vm
+voltagem.record(&v(0.5))
+
+}
+}
+
+//Fabio´s stuff
+proc position() {local i
+  access soma 
+for i = 0, n3d()-1 {
+    pt3dchange(i, $1-x+x3d(i), $2-y+y3d(i), $3-z+z3d(i), diam3d(i))
+  }
+  x = $1  y = $2  z = $3
+}
+
+
+endtemplate Purkinje_simple
+
+// ------------------------------------
+// Some global stuff. 
+// ------------------------------------
+
+
+celsius = 36
+v_init=-65

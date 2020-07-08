@@ -1,0 +1,147 @@
+begintemplate StellateCell
+
+
+public soma, dendrite, nclist
+public x, y, z
+public Esynapse, Isynapse
+
+//load_file("nrngui.hoc")
+//nrncontrolmenu()
+
+//counting spikes
+public spiketimes,spikecount
+objref spiketimes,spikecount
+
+public voltagem
+objref voltagem
+
+objectvar nclist
+objectvar Esynapse, Isynapse
+
+
+public position
+
+
+
+create soma
+create dendrite[96]
+
+
+proc init() {
+
+x = $1
+y = $2
+z = $3
+
+//////////////////////////////////////////////////////////
+//Open Morphology
+/////////////////////////////////////////////////////////
+xopen("SC_morphology.hoc")
+
+
+//cell passive parameters
+
+Vleak = -70  // to avoid spontaneous firing
+
+fator  = 1.0   
+
+// spiny dendrites
+
+Cm_all = fator * 1.5 //uF/cm**2 Molineux et al., 2005
+Rm_all = 20e3 // ohm*cm**2 Molineux et al., 2005
+Ra_all = 115 // ohm*cm Roth and Hausser 2001
+gL = fator*1./Rm_all // siemens/cm**2
+
+forall {
+	insert pas g_pas=gL Ra=Ra_all e_pas=Vleak cm=Cm_all
+}
+
+//soma (Rm divided by half)
+Cm_soma = 1.5 //uF/cm**2 Molineux et al., 2005
+Rm_soma = 20e3 // ohm*cm**2 Traub 91
+Ra_soma = 115 // ohm*cm Roth and Hausser 2001
+gL_soma = 1./Rm_soma // siemens/cm**2
+
+
+soma {
+	g_pas=gL_soma Ra=Ra_soma e_pas=Vleak cm=Cm_soma
+
+	insert Golgi_Na
+	insert Golgi_KV
+	insert Golgi_KA
+	insert Golgi_Ca_LVA
+	
+	ena = 60 // Masoli et al. 2015
+     ek = -88 // Masoli et al. 2015
+
+
+	gnabar_Golgi_Na= 100e-2 // (S/cm2)
+	gkbar_Golgi_KV= 60e-2 // (S/cm2)
+
+     Aalpha_n_Golgi_KV = 0.1 * -0.01 //(/ms-mV)
+	Abeta_n_Golgi_KV = 0.1 * 0.125 //(/ms)
+
+	gkbar_Golgi_KA= 5*2e-2 // (S/cm2)
+	gca2bar_Golgi_Ca_LVA= 16*0.2e-2 // (S/cm2)
+	
+}
+
+
+dendrite[95] {
+Esynapse = new Exp2Syn(0.5)      //AMPAR
+Esynapse.tau1=0.28 //ms rise time (Hausser and Roth, 1997)
+Esynapse.tau2=1.23  //ms decay time (Hausser and Roth, 1997)
+Esynapse.e=0       //mV reversal potential
+
+Isynapse = new Exp2Syn(0.5)      //GABAaR 
+Isynapse.tau1=1.8 //ms rise time
+Isynapse.tau2=8.5  //ms decay time
+Isynapse.e=-85       //mV reversal potential (Houston, 2009)
+
+}  
+
+
+//counting spikes
+access soma
+nclist=new List()
+
+spiketimes=new Vector()
+lastspikecount=0
+
+voltagem=new Vector()
+
+spikecount=new APCount(0.5)
+spikecount.thresh=-20
+spikecount.record(spiketimes)
+
+//Saving Vm
+voltagem.record(&v(0.5))
+
+}
+
+
+//Fabio´s stuff
+proc position() {local i
+  access soma 
+for i = 0, n3d()-1 {
+    pt3dchange(i, $1-x+x3d(i), $2-y+y3d(i), $3-z+z3d(i), diam3d(i))
+  }
+  x = $1  y = $2  z = $3
+}
+
+endtemplate StellateCell
+
+
+// ------------------------------------
+// Some global stuff. 
+// ------------------------------------
+
+
+celsius = 36 //temperature (Forrest, 2015)
+v_init = -70.8421
+dt = 0.01
+
+
+//simulation parameters
+tstop = 1000
+

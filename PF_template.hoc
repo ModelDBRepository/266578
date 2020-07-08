@@ -1,0 +1,93 @@
+//DEFINITION OF CELL TEMPLATE
+
+begintemplate fibre
+
+public Presynapse
+public x,y,z
+public StimTrigger
+
+objref StimTrigger
+
+public nclist
+objectvar nclist  
+
+//counting spikes
+public spiketimes,spikecount
+objref spiketimes,spikecount
+
+public syn 
+objectvar syn 
+
+public voltagem
+objref voltagem
+
+public randomseed
+public position
+
+create Presynapse	//create compartment
+
+proc init() {
+
+x=$1
+y=$2
+z=$3
+
+randomseed = $4 //Fabio´s Stuff
+
+spiketimes=new Vector()
+lastspikecount=0
+
+voltagem=new Vector()
+
+
+Presynapse {
+
+ //initialise and clear the 3D information
+ pt3dclear()
+ pt3dadd(x,y,z,10)	//set position of cell
+ pt3dadd(x,y,z+10,10)
+
+ diam=1.0
+ L=1
+
+nseg=1
+diam=10.0
+L=5
+Ra=123
+insert hh	//Hodgkin-Huxley channels
+gnabar=0.25
+gl_hh=.0001666
+el_hh=-60 
+syn=new ExpSyn(0) //Adding synapse
+
+ nclist=new List()
+ StimTrigger=new NetStim(0.5) //Adding spike generator
+ 
+// Setting the random seed for the Spike Generator
+StimTrigger.seed(randomseed)
+
+
+
+//counting spikes
+//spikecount=new APCount(0.5)
+//spikecount.thresh=-20
+//spikecount.record(spiketimes)
+
+//Saving Vm
+//voltagem.record(&v(0.5))
+}
+}
+
+//Fabio´s stuff
+proc position() {local i
+  access Presynapse 
+for i = 0, n3d()-1 {
+    pt3dchange(i, $1-x+x3d(i), $2-y+y3d(i), $3-z+z3d(i), diam3d(i))
+  }
+  x = $1  y = $2  z = $3
+}
+
+
+endtemplate fibre
+
+
