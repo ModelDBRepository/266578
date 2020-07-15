@@ -1,0 +1,38 @@
+<html>
+<p>Developer Fabio Simoes de Souza, 2020 <br/>
+University of Colorado Anschutz Medical Campus
+University Federal of ABC
+</p><p>Ma et al., 2020<br/>
+Molecular layer interneurons in the cerebellum encode for valence in
+associative learning<br/>
+Nature Communications
+</p><p>biorXiv <a href="https://doi.org/10.1101/2019.12.14.876201">https://doi.org/10.1101/2019.12.14.876201</a> 
+</p><p>Region: Cerebellum<br/>
+Cell Type: Purkinje cell (PC) and Stellate cell (SC)
+Simulator: NEURON 
+</p><p>Model Input: PF background input from 0 to 2000ms and from 4000ms to 5000ms. 
+Odorant-driven PF input from 2000ms to 4000ms.
+CF input at 4000ms for S+ conditions.<br/>
+Model Output: PC and SC firing in response to PF and CF inputs
+</p><ol>
+  <li>Download the model package from the Downloads section.  </li><li>Unzip the downloaded package  </li><li>Run mknrndll (mswin), or nrnivmodl (all platforms) to compile the mechanisms  </li><li>Choose the experimental condition by uncommenting the desired line
+in the file mosinit.hoc</li></ol>
+<p>S+ and Saline:<br/>
+//load_file("mosinit_PC_SC_SplusSaline.hoc")
+</p><p>S- and Saline:<br/>
+//load_file("mosinit_PC_SC_SminusSaline.hoc")
+</p><p>S+ and CNO:<br/>
+//load_file("mosinit_PC_SC_SplusCNO.hoc")
+</p><p>S- and CNO:<br/>
+//load_file("mosinit_PC_SC_SminusCNO.hoc")
+</p><p>5) Run the file mosinit.hoc (with nrngui). If you need more help
+running the model please consult:<br/>
+<a href="https://senselab.med.yale.edu/ModelDB/NEURON_DwnldGuide">https://senselab.med.yale.edu/ModelDB/NEURON_DwnldGuide</a>
+</p><p>6) 20200715: an update from Fabio Simoes de Souza to include spike
+time saving in hoc files and Plot_results.m matlab file to plot them
+similar to Suppl. Fig. 14:
+</p>
+<p>
+  <img src="./screenshot.png" alt="screenshot" width="650">
+    </p>
+</html>

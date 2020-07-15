@@ -518,6 +518,23 @@ ps.exec_menu("Shape Plot")
 fast_flush_list.append(ps)
 
 
+//Recording data
+
+objref PC_spiketimes, PC_nc, PC_nil
+PC_spiketimes = new Vector()
+PC[0].soma PC_nc=new NetCon(&PC[0].soma.v(0.5),PC_nil)
+PC_nc.record(PC_spiketimes)
+
+objref SC0_spiketimes, SC0_nc, SC0_nil
+SC0_spiketimes = new Vector()
+SC[0].soma SC0_nc=new NetCon(&SC[0].soma.v(0.5),SC0_nil)
+SC0_nc.record(SC0_spiketimes)
+
+objref SC1_spiketimes, SC1_nc, SC1_nil
+SC1_spiketimes = new Vector()
+SC[1].soma SC1_nc=new NetCon(&SC[1].soma.v(0.5),SC1_nil)
+SC1_nc.record(SC1_spiketimes)
+
 
 //begining
 init()
@@ -525,5 +542,24 @@ run()
 
 
 
+//save spike times
+
+objref savdataspkt0
+savdataspkt0=new File()
+savdataspkt0.wopen("data_spkt_PC_soma.dat")
+PC_spiketimes.printf(savdataspkt0)
+savdataspkt0.close()
+
+objref savdataspkt1
+savdataspkt1=new File()
+savdataspkt1.wopen("data_spkt_SC0_soma.dat")
+SC0_spiketimes.printf(savdataspkt1)
+savdataspkt1.close()
+
+objref savdataspkt2
+savdataspkt2=new File()
+savdataspkt2.wopen("data_spkt_SC1_soma.dat")
+SC1_spiketimes.printf(savdataspkt2)
+savdataspkt2.close()
 
 
