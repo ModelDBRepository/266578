@@ -234,7 +234,7 @@ voltagem.record(&v(0.5))
 }
 }
 
-//Fabio´s stuff
+//FabioÂ´s stuff
 proc position() {local i
   access soma 
 for i = 0, n3d()-1 {
